@@ -9,6 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700;8..60,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -89,6 +91,8 @@
   }
   .topbar-actions{display:flex;flex-direction:row;flex-wrap:nowrap;gap:8px;align-items:center;justify-content:flex-end;}
   .topbar-actions .btn{justify-content:center;white-space:nowrap;padding:5.8px 9.4px;font-size:9px;width:71px;height:26px;}
+  .topbar-actions .btn.icon-only{width:30px;padding:0;flex-shrink:0;}
+  .topbar-actions .btn.icon-only svg{width:15px;height:15px;display:block;}
   .btn{
     border:1px solid var(--line);
     background:var(--white);
@@ -489,24 +493,6 @@
   }
   .list-search .clear-btn:hover{background:var(--paper-dim);color:var(--ink);}
 
-  .near-me-wrap{position:relative;}
-  .near-me-btn{
-    white-space:nowrap;background:var(--white);border:1px solid var(--line);color:var(--ink);
-    padding:9px 14px;border-radius:8px;font-size:14px;cursor:pointer;
-  }
-  .near-me-btn:hover{background:var(--paper-dim);}
-  .near-me-btn.active{background:var(--teal);border-color:var(--teal);color:#fff;}
-  .near-me-btn:disabled{opacity:.6;cursor:default;}
-  .near-me-error{
-    position:absolute;top:100%;left:0;margin-top:4px;font-size:12px;color:var(--card-red);
-    background:var(--white);border:1px solid var(--line);border-radius:6px;padding:6px 10px;
-    max-width:240px;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.08);
-  }
-  .near-me-note{
-    position:absolute;top:100%;left:0;margin-top:4px;font-size:12px;color:var(--amber-dark);
-    background:var(--white);border:1px solid var(--line);border-radius:6px;padding:6px 10px;
-    max-width:240px;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.08);white-space:nowrap;
-  }
   .radius-filter{
     display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-basis:100%;
   }
@@ -518,6 +504,86 @@
   .radius-option input{margin:0;width:13px;height:13px;accent-color:var(--teal);}
   .radius-option.active{background:var(--teal);border-color:var(--teal);color:#fff;}
   .radius-option.active input{accent-color:#fff;}
+  .radius-filter-block{display:flex;flex-direction:column;gap:8px;flex-basis:100%;}
+  .radius-custom-row{
+    display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);
+  }
+  .radius-custom-row.active{color:var(--ink);font-weight:600;}
+  .radius-custom-input{
+    width:70px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);
+    background:var(--white);color:var(--ink);font-size:13px;font-family:inherit;
+  }
+  .radius-custom-input:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal);}
+
+  /* ---------- "Who's using" gate screen (shown before Home, à la Flag Atlas's
+     "Who's playing?" screen — same idea, this app's own teal/serif look) ---------- */
+  .who-wrap{
+    min-height:calc(100vh - 90px);
+    display:flex;align-items:center;justify-content:center;
+    padding:40px 20px;
+  }
+  .who-content{max-width:420px;width:100%;text-align:center;}
+  .who-logo-row{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:6px;}
+  .who-logo-row .mark{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:32px;height:32px;border-radius:6px;
+    background:var(--teal);color:white;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;
+  }
+  .who-content h1{font-size:24px;margin:0;color:var(--ink);}
+  .who-eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:1.5px;
+    color:var(--teal-dark);text-transform:uppercase;margin:22px 0 16px;
+  }
+  .who-grid{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .who-card{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    width:150px;height:150px;
+    background:var(--white);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 3px 10px rgba(18,42,59,.08);
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .who-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(18,42,59,.14);border-color:var(--teal);}
+  .who-card:active{transform:translateY(0) scale(.97);}
+  .who-avatar{
+    width:52px;height:52px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--paper-dim);font-size:22px;font-weight:700;
+    font-family:'Source Serif 4',serif;color:var(--teal-dark);
+  }
+  .who-name{font-size:14.5px;font-weight:600;color:var(--ink);}
+  .who-sub{font-size:15px;color:var(--ink-soft);max-width:340px;margin:18px auto 0;line-height:1.5;}
+  .who-login-card{
+    display:flex;flex-direction:column;gap:10px;max-width:300px;margin:0 auto;
+  }
+  .who-login-card input{
+    background:var(--white);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:10px 12px;font-size:14px;font-family:inherit;
+  }
+  .who-login-card input:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal);}
+  .who-login-card .btn{justify-content:center;margin-top:2px;}
+  .who-login-error{color:var(--card-red);font-size:12.5px;margin:0;min-height:1.1em;}
+  .who-login-back{
+    background:none;border:none;padding:0;margin-top:18px;color:var(--ink-soft);
+    font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .who-login-back:hover{color:var(--teal-dark);}
+  .who-login-back.inline{margin:0;display:inline;text-decoration:underline;}
+  .who-signed-in{font-size:12px;color:var(--ink-soft);margin-top:14px;}
+
+  /* ---------- Home "Near Me" panel ---------- */
+  .home-nearme{
+    background:var(--white);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px;
+  }
+  .home-nearme-head{display:flex;flex-direction:column;gap:2px;}
+  .home-nearme-title{font-family:'Source Serif 4',serif;font-size:15px;font-weight:700;color:var(--ink);}
+  .home-nearme-sub{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .home-nearme-link{
+    background:none;border:none;padding:0;color:var(--teal);font-weight:600;
+    text-decoration:underline;cursor:pointer;font-size:inherit;font-family:inherit;
+  }
+  .profile-location-error{font-size:12px;color:var(--card-red);margin-top:7px;}
   .distance-badge{
     display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--teal);
     font-weight:600;
@@ -652,6 +718,27 @@
   .legal-page h3{font-size:15px;color:var(--ink);margin:22px 0 6px;}
   .legal-page p, .legal-page li{font-size:13.5px;line-height:1.65;color:var(--ink-soft);}
   .legal-page ul{margin:6px 0 6px 20px;padding:0;}
+
+  /* ---------- Profile page ---------- */
+  .profile-page{max-width:520px;margin:0 auto;padding:4px 2px 40px;}
+  .profile-page h2{font-family:'Source Serif 4',serif;font-size:22px;color:var(--ink);margin:0 0 4px;}
+  .profile-page .profile-sub{font-size:13px;color:var(--ink-soft);margin:0 0 26px;line-height:1.55;}
+  .profile-field{margin-bottom:20px;}
+  .profile-field label{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);margin-bottom:7px;font-family:'IBM Plex Mono',monospace;letter-spacing:.4px;text-transform:uppercase;}
+  .profile-field input[type=text]{width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--line);background:var(--white);color:var(--ink);font-size:14.5px;font-family:inherit;}
+  .profile-field input[type=text]:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal);}
+  .profile-location-row{display:flex;gap:8px;align-items:stretch;}
+  .profile-location-row input{flex:1;min-width:0;}
+  .profile-locate-btn{white-space:nowrap;flex-shrink:0;}
+  .profile-note{font-size:12px;color:var(--ink-soft);margin-top:7px;}
+  .profile-actions{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .profile-avatar{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--teal);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Source Serif 4',serif;font-size:22px;font-weight:700;
+    margin-bottom:16px;
+  }
 
   @media (max-width:640px){
     .topbar{flex-wrap:wrap;}
@@ -945,6 +1032,45 @@ function saveGeocodeCache(cache){
 const GEOCODE_FIREBASE_DB_URL = "https://intelli-b7f0a-default-rtdb.firebaseio.com/";
 const GEOCODE_CLOUD_URL = GEOCODE_FIREBASE_DB_URL + 'medical_directory_geocode.json';
 
+// ---- Firebase sync for user "B"'s personal save bundle (favorites, saved
+// contact numbers, collapsed hospitals & profile) — same open Firebase
+// project as the geocode cache above, its own path so the two never collide.
+// Only used when the "B" identity is selected on the homepage; "Others"
+// stays local-storage-only, same as before this feature existed.
+const USER_B_CLOUD_URL = GEOCODE_FIREBASE_DB_URL + 'medical_directory_user_b.json';
+const APP_USER_KEY = 'intellicare-app-user-v1';
+
+// ---- Firebase Auth for "B" only (same pattern as daily-ledger.html's login
+// gate) — email/password sign-in guards B's cloud save. Firebase Auth's
+// default persistence keeps the session in this browser, so it only asks
+// once per device; "Others" never touches auth at all. Guarded the same way
+// as daily-ledger.html: if the SDK fails to load or init throws, B's Save
+// just falls back to local-only instead of breaking the app.
+const B_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCRjRTfAJc_P8qqx7LbToLlMSY7kb3vefM",
+  authDomain: "intelli-b7f0a.firebaseapp.com",
+  databaseURL: "https://intelli-b7f0a-default-rtdb.firebaseio.com",
+  projectId: "intelli-b7f0a",
+  storageBucket: "intelli-b7f0a.firebasestorage.app",
+  messagingSenderId: "673607609824",
+  appId: "1:673607609824:web:2476aaeae0e4ff08a80f85"
+};
+let fbAuth = null;
+let fbAuthAvailable = false;
+try{
+  if(typeof firebase !== 'undefined'){
+    firebase.initializeApp(B_FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbAuthAvailable = true;
+  }else{
+    console.warn('Firebase Auth SDK did not load — B sign-in unavailable, falling back to local-only.');
+  }
+}catch(err){
+  console.warn('Firebase Auth init failed — B sign-in unavailable, falling back to local-only.', err);
+  fbAuth = null;
+  fbAuthAvailable = false;
+}
+
 let geocodeCloudSyncTimer = null;
 function queueGeocodeCloudSync(cache){
   // Debounce so a burst of lookups (the queue can resolve several per minute)
@@ -1005,6 +1131,23 @@ function loadLastLocation(){
 function saveLastLocation(loc){
   try{ window.localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({...loc, savedAt:Date.now()})); }
   catch(err){ /* safe to ignore */ }
+}
+
+// Separate, purely-local cache for geocoding the PROFILE's own location text
+// into coordinates. Deliberately never synced anywhere (unlike the shared
+// facility geocode cache below) since a person's own location is personal data.
+const PROFILE_GEOCODE_CACHE_KEY = 'intellicare-profile-geocode-cache-v1';
+function loadProfileGeocodeCache(){
+  try{
+    const raw = window.localStorage.getItem(PROFILE_GEOCODE_CACHE_KEY);
+    if(!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed==='object') ? parsed : {};
+  }catch(err){ return {}; }
+}
+function saveProfileGeocodeCache(cache){
+  try{ window.localStorage.setItem(PROFILE_GEOCODE_CACHE_KEY, JSON.stringify(cache)); }
+  catch(err){ /* ignore */ }
 }
 // Key facilities by their normalized address+city+province so that every
 // facility (hospital, clinic, Aventus branch, or a doctor/dentist's listed
@@ -1549,31 +1692,35 @@ function DoctorCard({edge, title, specLabel, facilities, favorited, onToggleFavo
   );
 }
 
-function NearMeButton({active, locating, error, usingLastKnown, onClick}){
-  return (
-    <div className="near-me-wrap">
-      <button type="button" className={'btn near-me-btn'+(active?' active':'')} onClick={onClick} disabled={locating}
-        title={active?'Showing nearest first — tap to turn off':'Sort by distance from your location'}
-        aria-pressed={active}>
-        {locating ? '📍 Locating…' : active ? '📍 Near Me ✓' : '📍 Near Me'}
-      </button>
-      {active && usingLastKnown && <div className="near-me-note">Using last known location — GPS unavailable</div>}
-      {error && <div className="near-me-error">{error}</div>}
-    </div>
-  );
-}
-
 const RADIUS_OPTIONS = [2, 5, 10, 20, 'all'];
 function RadiusFilter({value, onChange}){
+  const isPreset = RADIUS_OPTIONS.includes(value);
+  const [customText, setCustomText] = useState(isPreset ? '' : String(value||''));
+  useEffect(()=>{ if(isPreset) setCustomText(''); }, [isPreset]);
   return (
-    <div className="radius-filter" role="radiogroup" aria-label="Distance radius">
-      <span className="radius-filter-label">Within</span>
-      {RADIUS_OPTIONS.map(opt=>(
-        <label key={opt} className={'radius-option'+(value===opt?' active':'')}>
-          <input type="radio" name="nearMeRadius" checked={value===opt} onChange={()=>onChange(opt)} />
-          {opt==='all' ? 'All' : opt+' km'}
-        </label>
-      ))}
+    <div className="radius-filter-block">
+      <div className="radius-filter" role="radiogroup" aria-label="Distance radius">
+        <span className="radius-filter-label">Within</span>
+        {RADIUS_OPTIONS.map(opt=>(
+          <label key={opt} className={'radius-option'+(value===opt?' active':'')}>
+            <input type="radio" name="nearMeRadius" checked={value===opt} onChange={()=>{ onChange(opt); setCustomText(''); }} />
+            {opt==='all' ? 'All' : opt+' km'}
+          </label>
+        ))}
+      </div>
+      <div className={'radius-custom-row'+(!isPreset && customText ? ' active' : '')}>
+        <span>or a custom radius:</span>
+        <input type="number" inputMode="numeric" min="1" max="500" className="radius-custom-input" placeholder="e.g. 15"
+          value={customText}
+          onChange={e=>{
+            const v = e.target.value;
+            setCustomText(v);
+            const n = Number(v);
+            if(v && n>0) onChange(n);
+          }}
+        />
+        <span>km</span>
+      </div>
     </div>
   );
 }
@@ -1654,13 +1801,99 @@ function App(){
   const [loadingMsg, setLoadingMsg] = useState('Loading…');
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showImportChoice, setShowImportChoice] = useState(false);
   const fileInputRef = useRef(null);
   const jsonFileInputRef = useRef(null);
 
-  // navigation
-  const [trail, setTrail] = useState([{screen:'home', label:''}]);
+  // "Who's using" — B (whose Save also syncs to the shared Firebase project)
+  // vs Others (Import/Export hidden, Save stays local-storage-only). Chosen
+  // on the homepage; remembered per-device.
+  const [appUser, setAppUser] = useState(()=>{
+    try{ return window.localStorage.getItem(APP_USER_KEY) || 'others'; }
+    catch(e){ return 'others'; }
+  });
+  useEffect(()=>{
+    try{ window.localStorage.setItem(APP_USER_KEY, appUser); }
+    catch(e){ /* ignore */ }
+  }, [appUser]);
+
+  // B's Firebase Auth session (same pattern as daily-ledger.html's login
+  // gate). fbAuth.onAuthStateChanged fires once with the restored session
+  // (if any) — Firebase's default persistence means a browser that has
+  // signed in before stays signed in, so B is only ever asked once per
+  // browser. bAuthChecked flips true after that first callback so we don't
+  // act on a false "not signed in" before the SDK has had a chance to
+  // restore the session.
+  const [bAuthUser, setBAuthUser] = useState(null);
+  const [bAuthChecked, setBAuthChecked] = useState(!fbAuthAvailable);
+  const [showBLogin, setShowBLogin] = useState(false);
+  const [bLoginError, setBLoginError] = useState('');
+  const [bLoginBusy, setBLoginBusy] = useState(false);
+  const bLoginEmailRef = useRef(null);
+  const bLoginPasswordRef = useRef(null);
+
+  useEffect(()=>{
+    if(!fbAuthAvailable) return;
+    const unsub = fbAuth.onAuthStateChanged(user=>{
+      setBAuthUser(user);
+      setBAuthChecked(true);
+    });
+    return unsub;
+  }, []);
+
+  // If this device previously chose "B" but isn't actually signed in to
+  // Firebase (session expired, storage cleared, first Firebase-auth run
+  // after upgrading from the old open-REST version) — send them back to the
+  // gate to sign in again, once the initial session check has resolved.
+  useEffect(()=>{
+    if(!bAuthChecked) return;
+    if(appUser==='B' && fbAuthAvailable && !bAuthUser){
+      setShowBLogin(true);
+      setTrail([{screen:'whoUsing', label:''}]);
+    }
+  }, [bAuthChecked]);
+
+  // Once a sign-in started from the gate screen resolves successfully,
+  // finish choosing B and continue into the app.
+  useEffect(()=>{
+    if(showBLogin && bAuthUser){
+      setAppUser('B');
+      setShowBLogin(false);
+      setBLoginError('');
+      setTrail([{screen:'home', label:''}, {screen:'profile', label:'Profile'}]);
+      window.scrollTo(0,0);
+    }
+  }, [bAuthUser]);
+
+  const handleBLoginSubmit = async (e)=>{
+    e.preventDefault();
+    setBLoginError('');
+    setBLoginBusy(true);
+    try{
+      await fbAuth.signInWithEmailAndPassword(
+        (bLoginEmailRef.current && bLoginEmailRef.current.value.trim()) || '',
+        (bLoginPasswordRef.current && bLoginPasswordRef.current.value) || ''
+      );
+      // onAuthStateChanged fires from here and the effect above takes it home.
+    }catch(err){
+      setBLoginError('Sign-in failed — check your email and password.');
+    }finally{
+      setBLoginBusy(false);
+    }
+  };
+
+  // navigation — same idea as Flag Atlas's "Who's playing?" gate: shown once,
+  // before Home, only if this device hasn't picked B/Others before. A return
+  // visit (APP_USER_KEY already set) skips straight to Home+Profile, same as
+  // before this feature existed. The 🔀 Switch button lets either user jump
+  // back to the gate at any time without losing their data.
+  const [trail, setTrail] = useState(()=>{
+    let chosenBefore = false;
+    try{ chosenBefore = !!window.localStorage.getItem(APP_USER_KEY); }catch(e){}
+    return chosenBefore
+      ? [{screen:'home', label:''}, {screen:'profile', label:'Profile'}]
+      : [{screen:'whoUsing', label:''}];
+  });
   const view = trail[trail.length-1];
 
   // --- phone/browser back-button support ---
@@ -1708,6 +1941,129 @@ function App(){
     }
   }, [trail.length]);
 
+  // ---------- User profile (name & location) ----------
+  // Shown first thing when the app opens (see initial `trail` above) so the
+  // person can confirm/edit it, and reachable any time via the topbar button.
+  const [profile, setProfile] = useState({name:'', location:''});
+  const [profileHydrated, setProfileHydrated] = useState(false);
+  const [profileLocating, setProfileLocating] = useState(false);
+  const [profileLocationError, setProfileLocationError] = useState('');
+
+  useEffect(()=>{
+    let cancelled=false;
+    (async ()=>{
+      let next = loadLocalSlice('profile', null); // browser-local fallback, works even without window.storage
+      try{
+        const stored = await window.storage.get('user-profile', false);
+        if(stored && stored.value) next = JSON.parse(stored.value);
+      }catch(e){ /* nothing saved yet */ }
+      if(!cancelled){
+        if(next) setProfile({name: next.name||'', location: next.location||''});
+        setProfileHydrated(true);
+      }
+    })();
+    return ()=>{cancelled=true;};
+  }, []);
+
+  // Auto-persists on every change (typing, or a successful "use my location"),
+  // gated on profileHydrated so the initial blank default can't clobber a
+  // previously saved profile before the load above finishes.
+  useEffect(()=>{
+    if(!profileHydrated) return;
+    safeStorageSet('user-profile', JSON.stringify(profile), false);
+    try{
+      const saved = loadLocalSave() || {};
+      window.localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify({...saved, profile}));
+    }catch(e){ /* browser may be blocking local storage — window.storage above still applies */ }
+  }, [profile, profileHydrated]);
+
+  // Coordinates for the profile's saved location — this is what every card's
+  // "distance from you" is calculated against. Kept in sync with profile.location:
+  // resolved instantly from a local cache when possible, otherwise geocoded
+  // (debounced) via the same free Nominatim service used for facility addresses.
+  const [profileCoords, setProfileCoords] = useState(null); // {lat,lon} | null
+  const [profileGeocoding, setProfileGeocoding] = useState(false);
+  const profileCoordsForRef = useRef(''); // location text profileCoords currently reflects
+  const profileGeocodeTimerRef = useRef(null);
+  const profileGeocodeCacheRef = useRef(null); // lazy-loaded local cache
+
+  useEffect(()=>{
+    if(!profileHydrated) return;
+    const text = (profile.location||'').trim();
+    if(!text){
+      profileCoordsForRef.current = '';
+      setProfileCoords(null);
+      return;
+    }
+    if(profileCoordsForRef.current === text) return; // already resolved for this exact text
+    if(profileGeocodeTimerRef.current) clearTimeout(profileGeocodeTimerRef.current);
+    if(!profileGeocodeCacheRef.current) profileGeocodeCacheRef.current = loadProfileGeocodeCache();
+    const cacheKey = norm(text);
+    const cached = profileGeocodeCacheRef.current[cacheKey];
+    if(cached){
+      profileCoordsForRef.current = text;
+      setProfileCoords(cached);
+      return;
+    }
+    profileGeocodeTimerRef.current = setTimeout(()=>{
+      setProfileGeocoding(true);
+      fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q='+encodeURIComponent(text))
+        .then(res=> res.ok ? res.json() : [])
+        .then(results=>{
+          const hit = results && results[0];
+          if(hit){
+            const coords = {lat:parseFloat(hit.lat), lon:parseFloat(hit.lon)};
+            profileCoordsForRef.current = text;
+            profileGeocodeCacheRef.current = {...profileGeocodeCacheRef.current, [cacheKey]: coords};
+            saveProfileGeocodeCache(profileGeocodeCacheRef.current);
+            setProfileCoords(coords);
+          }else{
+            profileCoordsForRef.current = text;
+            setProfileCoords(null);
+          }
+        })
+        .catch(()=>{ /* leave unresolved; will retry next time the text changes */ })
+        .finally(()=> setProfileGeocoding(false));
+    }, 700);
+    return ()=>{ if(profileGeocodeTimerRef.current) clearTimeout(profileGeocodeTimerRef.current); };
+  }, [profile.location, profileHydrated]);
+
+  // "Use my location" — asks for location permission, then reverse-geocodes
+  // the coordinates into a readable "City, Province" via Nominatim (same
+  // free OSM service already used elsewhere in this file for forward
+  // geocoding). Falls back to raw coordinates if the lookup fails. The exact
+  // GPS fix is stored straight into profileCoords too, so distances start
+  // working immediately without waiting on a second (forward-geocode) lookup.
+  const locateProfile = ()=>{
+    if(!navigator.geolocation){ setProfileLocationError('Geolocation is not supported on this device.'); return; }
+    setProfileLocating(true);
+    setProfileLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      async pos=>{
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        saveLastLocation({lat, lon});
+        let label = lat.toFixed(4)+', '+lon.toFixed(4);
+        try{
+          const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&addressdetails=1&lat='+lat+'&lon='+lon);
+          const j = await res.json();
+          const a = (j && j.address) || {};
+          const place = a.city || a.town || a.municipality || a.village || a.suburb || a.county || '';
+          const province = a.state || a.region || '';
+          label = [place, province].filter(Boolean).join(', ') || j.display_name || label;
+        }catch(e){ /* keep the coordinate fallback */ }
+        profileCoordsForRef.current = label;
+        setProfileCoords({lat, lon});
+        setProfile(p=>({...p, location: label}));
+        setProfileLocating(false);
+      },
+      err=>{
+        setProfileLocationError(err && err.message ? err.message : 'Unable to get your location.');
+        setProfileLocating(false);
+      },
+      {enableHighAccuracy:false, timeout:12000, maximumAge:600000}
+    );
+  };
+
   const [listQuery, setListQuery] = useState('');
   const [filterProv, setFilterProv] = useState('');
   const [filterCity, setFilterCity] = useState([]);
@@ -1715,16 +2071,11 @@ function App(){
   const [filterFac, setFilterFac] = useState('');
   const [shown, setShown] = useState(PAGE_SIZE);
 
-  // --- "📍 Near Me" distance sorting ---
-  // Location permission is requested once (browsers only ever prompt once per
-  // origin anyway, but we also avoid calling getCurrentPosition again once we
-  // already have a fix — re-tapping the button just toggles sorting on/off).
-  const [userLocation, setUserLocation] = useState(null);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState('');
-  const [nearMeOn, setNearMeOn] = useState(false);
-  const [usingLastKnown, setUsingLastKnown] = useState(false);
-  const [nearMeRadius, setNearMeRadius] = useState('all'); // 2 | 5 | 10 | 20 | 'all' (km)
+  // --- 📍 Distance-from-profile ---
+  // Distances shown on every card are now always calculated from the location
+  // saved on the Profile page (no per-screen "Near Me" toggle needed). The
+  // radius filter (set on the Home screen) still limits/sorts results.
+  const [nearMeRadius, setNearMeRadius] = useState('all'); // 2 | 5 | 10 | 20 | 'all' | custom number (km)
   const [geoCoords, setGeoCoords] = useState(loadGeocodeCache);
   const geoCoordsRef = useRef(geoCoords);
   geoCoordsRef.current = geoCoords;
@@ -1773,59 +2124,27 @@ function App(){
     if(!geocodeBusyRef.current) processGeocodeQueue();
   }, [processGeocodeQueue]);
 
-  const requestNearMe = useCallback(()=>{
-    if(userLocation){ setNearMeOn(on=>!on); return; } // already have a fix — just toggle sorting
-    setLocating(true);
-    setLocationError('');
-    // GPS unavailable/denied/timed out — fall back to the last fix we saved,
-    // so Near Me keeps working (with a slightly stale position) even offline.
-    const fallBackToLastKnown = (reason)=>{
-      const cached = loadLastLocation();
-      if(cached){
-        setUserLocation({lat:cached.lat, lon:cached.lon});
-        setUsingLastKnown(true);
-        setNearMeOn(true);
-      }else{
-        setLocationError(reason);
-      }
-      setLocating(false);
-    };
-    if(!navigator.geolocation){ fallBackToLastKnown('Geolocation is not supported on this device.'); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        const loc = {lat:pos.coords.latitude, lon:pos.coords.longitude};
-        setUserLocation(loc);
-        saveLastLocation(loc);
-        setUsingLastKnown(false);
-        setNearMeOn(true);
-        setLocating(false);
-      },
-      err=> fallBackToLastKnown(err && err.message ? err.message : 'Unable to get your location.'),
-      {enableHighAccuracy:false, timeout:12000, maximumAge:600000}
-    );
-  }, [userLocation]);
-
   // Returns a distance in km once known, null once geocoding has failed for
   // this address, or undefined while it's still pending (and kicks off a
   // geocode lookup for it in the background, coordinates permitting).
   const distanceFor = useCallback((address, city, province)=>{
-    if(!userLocation || !address) return undefined;
+    if(!profileCoords || !address) return undefined;
     const key = geocodeKey(address, city, province);
     const coords = geoCoords[key];
     if(coords===undefined){ scheduleGeocode(address, city, province); return undefined; }
     if(!coords) return null;
-    return haversineKm(userLocation.lat, userLocation.lon, coords.lat, coords.lon);
-  }, [userLocation, geoCoords, scheduleGeocode]);
+    return haversineKm(profileCoords.lat, profileCoords.lon, coords.lat, coords.lon);
+  }, [profileCoords, geoCoords, scheduleGeocode]);
 
   // Stable-sorts a facility array (each item needs .address/.city/.province,
-  // or pass a custom getter) nearest-first when Near Me is active, and drops
-  // anything outside the selected radius. Items that haven't been geocoded
-  // yet are kept (so they don't briefly vanish then reappear) but sort last;
-  // items a lookup has confirmed are too far, or failed to geocode, are
-  // dropped once a radius other than "All" is selected.
+  // or pass a custom getter) nearest-first whenever the profile has a known
+  // location, and drops anything outside the selected radius. Items that
+  // haven't been geocoded yet are kept (so they don't briefly vanish then
+  // reappear) but sort last; items a lookup has confirmed are too far, or
+  // failed to geocode, are dropped once a radius other than "All" is selected.
   function sortByDistance(list, getAddr){
-    if(!nearMeOn || !userLocation) return list;
-    const radiusKm = nearMeRadius==='all' ? null : nearMeRadius;
+    if(!profileCoords) return list;
+    const radiusKm = (nearMeRadius==='all' || !nearMeRadius) ? null : Number(nearMeRadius);
     const withDist = list.map((item,idx)=>{
       const {address,city,province} = getAddr(item);
       const d = distanceFor(address,city,province);
@@ -2013,6 +2332,44 @@ function App(){
     });
   };
 
+  // When "B" is selected, pull B's saved bundle from Firebase (the same open
+  // project used for the geocode cache, under its own path) so favorites,
+  // saved contact numbers, collapsed hospitals & profile follow B to any
+  // device/browser. Runs whenever appUser switches to 'B' (including once on
+  // load if B was already selected last time) — placed after the local/
+  // window.storage hydration effects above so the cloud copy wins if present.
+  // Waits for a signed-in Firebase user (when auth is available) so the
+  // request carries an ID token, matching daily-ledger.html's loadFromCloud.
+  useEffect(()=>{
+    if(appUser !== 'B') return;
+    if(fbAuthAvailable && !bAuthUser) return;
+    let cancelled = false;
+    (async ()=>{
+      try{
+        let url = USER_B_CLOUD_URL;
+        if(fbAuthAvailable && bAuthUser){
+          const token = await bAuthUser.getIdToken();
+          url = url.replace('.json', `.json?auth=${token}`);
+        }
+        const res = await fetch(url);
+        if(!res.ok) return;
+        const remote = await res.json();
+        if(remote && typeof remote === 'object' && !cancelled){
+          if(remote.aventusContacts) setAventusContacts(remote.aventusContacts);
+          if(remote.doctorFavorites) setDoctorFavorites(remote.doctorFavorites);
+          if(remote.dentistFavorites) setDentistFavorites(remote.dentistFavorites);
+          if(remote.hospitalFavorites) setHospitalFavorites(remote.hospitalFavorites);
+          if(remote.clinicFavorites) setClinicFavorites(remote.clinicFavorites);
+          if(remote.facilityContacts) setFacilityContacts(remote.facilityContacts);
+          if(remote.collapsedFacilities) setCollapsedFacilities(remote.collapsedFacilities);
+          if(remote.profile) setProfile({name: remote.profile.name||'', location: remote.profile.location||''});
+          showToast("Loaded B's saved data from the cloud", 3200);
+        }
+      }catch(e){ /* offline or unreachable — local data stays as-is */ }
+    })();
+    return ()=>{cancelled=true;};
+  }, [appUser, bAuthUser]);
+
   useEffect(()=>{
     let cancelled=false;
     (async ()=>{
@@ -2034,6 +2391,40 @@ function App(){
     window.scrollTo(0,0);
   };
   const goHome = ()=>{ setTrail([{screen:'home',label:''}]); setAreaProv(''); setAreaCity([]); };
+  const signOutB = ()=>{
+    if(!fbAuthAvailable) return;
+    fbAuth.signOut();
+    if(appUser==='B'){
+      setShowBLogin(true);
+      setTrail([{screen:'whoUsing', label:''}]);
+    }
+  };
+
+  // Picking B or Others on the gate screen commits the choice and moves
+  // straight into Home+Profile, same landing spot as a return visit. B is
+  // only let through if already signed in to Firebase on this browser —
+  // otherwise chooseUser just reveals the email/password form (see
+  // renderWhoUsing) and the useEffect above finishes the job once sign-in
+  // succeeds. If the Firebase SDK didn't load at all, B falls back to
+  // working exactly as before (local-only, no login prompt).
+  const chooseUser = (id)=>{
+    if(id==='B' && fbAuthAvailable && !bAuthUser){
+      setBLoginError('');
+      setShowBLogin(true);
+      return;
+    }
+    setShowBLogin(false);
+    setAppUser(id);
+    setTrail([{screen:'home', label:''}, {screen:'profile', label:'Profile'}]);
+    window.scrollTo(0,0);
+  };
+  // 🔀 Switch — jump back to the gate screen without touching any saved data.
+  const switchUser = ()=>{
+    setShowBLogin(false);
+    setBLoginError('');
+    setTrail([{screen:'whoUsing', label:''}]);
+    window.scrollTo(0,0);
+  };
   const goTo = (i)=>{
     setTrail(t=>t.slice(0,i+1));
     setListQuery(''); setFilterProv(''); setFilterCity([]); setFilterSpec([]); setFilterFac(''); setShown(PAGE_SIZE);
@@ -2099,8 +2490,17 @@ function App(){
       if(payload.clinicFavorites) setClinicFavorites(payload.clinicFavorites);
       if(payload.facilityContacts) setFacilityContacts(payload.facilityContacts);
       if(payload.collapsedFacilities) setCollapsedFacilities(payload.collapsedFacilities);
+      if(payload.profile) setProfile({name: payload.profile.name||'', location: payload.profile.location||''});
+      if(payload.geoCoords && typeof payload.geoCoords === 'object'){
+        setGeoCoords(prev=>{
+          const merged = {...prev, ...payload.geoCoords};
+          saveGeocodeCache(merged);
+          queueGeocodeCloudSync(merged);
+          return merged;
+        });
+      }
       window.localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(payload));
-      showToast('Imported '+file.name+' — favorites, contact numbers & collapsed hospitals restored', 4500);
+      showToast('Imported '+file.name+' — favorites, contact numbers, collapsed hospitals & map coordinates restored', 4500);
     }catch(err){
       console.error(err);
       showToast('Could not read that file. Please check it is a valid .json backup exported from this app.', 4200);
@@ -2112,7 +2512,8 @@ function App(){
   const exportJson = ()=>{
     try{
       const payload = {
-        aventusContacts, doctorFavorites, dentistFavorites, hospitalFavorites, clinicFavorites, facilityContacts, collapsedFacilities,
+        aventusContacts, doctorFavorites, dentistFavorites, hospitalFavorites, clinicFavorites, facilityContacts, collapsedFacilities, profile,
+        geoCoords,
         savedAt: new Date().toISOString()
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -2125,36 +2526,49 @@ function App(){
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('Exported favorites, contact numbers & collapsed hospitals to .json', 3200);
+      showToast('Exported favorites, contact numbers, collapsed hospitals & map coordinates to .json', 3200);
     }catch(err){
       console.error('export failed', err);
       showToast('Could not export — please try again', 3200);
     }
   };
 
-  const resetData = async ()=>{
-    try{ await safeStorageDelete('directory-data', false); }catch(e){}
-    setData(decodeEmbedded());
-    goHome();
-    showToast('Reverted to the originally provided data.');
-  };
-
-  const confirmReset = ()=>{
-    setShowResetConfirm(false);
-    resetData();
-  };
-
-  const saveAllLocally = ()=>{
+  const saveAllLocally = async ()=>{
+    const payload = {
+      aventusContacts, doctorFavorites, dentistFavorites, hospitalFavorites, clinicFavorites, facilityContacts, collapsedFacilities, profile,
+      savedAt: new Date().toISOString()
+    };
     try{
-      const payload = {
-        aventusContacts, doctorFavorites, dentistFavorites, hospitalFavorites, clinicFavorites, facilityContacts, collapsedFacilities,
-        savedAt: new Date().toISOString()
-      };
       window.localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(payload));
-      showToast('Saved favorites, contact numbers & collapsed hospitals to this browser', 3200);
     }catch(err){
       console.error('local save failed', err);
       showToast('Could not save — this browser may be blocking local storage', 3500);
+      return;
+    }
+    if(appUser !== 'B'){
+      showToast('Saved favorites, contact numbers & collapsed hospitals to this browser', 3200);
+      return;
+    }
+    // B's Save also syncs to the shared Firebase project (same open project
+    // already used for the geocode cache), carrying B's Firebase ID token
+    // the same way daily-ledger.html's pushToCloud does, so B's data follows
+    // them to any device/browser they sign in on.
+    try{
+      let url = USER_B_CLOUD_URL;
+      if(fbAuthAvailable && bAuthUser){
+        const token = await bAuthUser.getIdToken();
+        url = url.replace('.json', `.json?auth=${token}`);
+      }
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('bad response');
+      showToast('Saved to this browser and synced to the cloud', 3200);
+    }catch(err){
+      console.error('cloud save failed', err);
+      showToast('Saved to this browser — cloud sync failed (check your connection)', 3800);
     }
   };
 
@@ -2291,7 +2705,7 @@ function App(){
     const ds = view.kind==='doctors'?data.doctors:data.dentists;
     const grouped = groupPersonRows(catsListFiltered, ds, facilityAddressIndex);
     return sortByDistance(grouped, g=> g.facilities[0]||{});
-  },[data,view,catsSearchActive,catsListFiltered,facilityAddressIndex,nearMeOn,userLocation,geoCoords,nearMeRadius]);
+  },[data,view,catsSearchActive,catsListFiltered,facilityAddressIndex,profileCoords,geoCoords,nearMeRadius]);
 
   // homepage province/city dropdowns — span doctors, dentists, hospitals & clinics
   // so "jump to my area" can route into any of the four sections.
@@ -2353,7 +2767,7 @@ function App(){
     const ds = view.kind==='doctors'?data.doctors:data.dentists;
     const grouped = groupPersonRows(recordListFiltered, ds, facilityAddressIndex);
     return sortByDistance(grouped, g=> g.facilities[0]||{});
-  },[data,view,recordListFiltered,facilityAddressIndex,nearMeOn,userLocation,geoCoords,nearMeRadius]);
+  },[data,view,recordListFiltered,facilityAddressIndex,profileCoords,geoCoords,nearMeRadius]);
 
 
   // Favorites: full grouped doctor records + hospital records matching what's been saved/bookmarked.
@@ -2396,7 +2810,7 @@ function App(){
       return true;
     });
     return sortByDistance(filtered, f=>({address:f[1], city:f[2], province:f[3]}));
-  },[data,view,listQuery,filterProv,filterCity,nonAventusClinics,nearMeOn,userLocation,geoCoords,nearMeRadius]);
+  },[data,view,listQuery,filterProv,filterCity,nonAventusClinics,profileCoords,geoCoords,nearMeRadius]);
 
   // for each Aventus branch, the set of specializations offered by doctors matched to it
   const aventusBranchSpecsMap = useMemo(()=>{
@@ -2442,7 +2856,7 @@ function App(){
       return true;
     });
     return sortByDistance(filtered, f=>({address:f[1], city:f[2], province:f[3]}));
-  },[data,view,listQuery,filterProv,filterSpec,aventusClinics,aventusBranchSpecsMap,nearMeOn,userLocation,geoCoords,nearMeRadius]);
+  },[data,view,listQuery,filterProv,filterSpec,aventusClinics,aventusBranchSpecsMap,profileCoords,geoCoords,nearMeRadius]);
 
   // doctors listed under a specific Aventus branch, matched by facility name
   const aventusBranchDoctorsGrouped = useMemo(()=>{
@@ -2474,9 +2888,85 @@ function App(){
 
   /* ---------- screen renderers ---------- */
 
+  function renderWhoUsing(){
+    const options = [
+      {id:'B', label:'B', desc:"Save also backs your favorites & contacts up to the cloud"},
+      {id:'others', label:'Others', desc:'Save keeps everything on this device only'}
+    ];
+
+    // B tapped and not signed in yet on this browser — ask for email/password,
+    // same form/flow as daily-ledger.html's #loginGate. Firebase's default
+    // session persistence means this only happens once per browser; after a
+    // successful sign-in the useEffect watching bAuthUser takes over and
+    // continues into Home automatically.
+    if(showBLogin){
+      return (
+        <div className="who-wrap">
+          <div className="who-content">
+            <div className="who-logo-row">
+              <span className="mark">PH</span>
+              <h1>INTELLICARE</h1>
+            </div>
+            <p className="who-eyebrow">Sign in as B</p>
+            <form className="who-login-card" onSubmit={handleBLoginSubmit}>
+              <input ref={bLoginEmailRef} type="email" placeholder="Email" autoComplete="username" required />
+              <input ref={bLoginPasswordRef} type="password" placeholder="Password" autoComplete="current-password" required />
+              <button type="submit" className="btn teal" disabled={bLoginBusy}>{bLoginBusy ? 'Signing in…' : 'Sign In'}</button>
+              {bLoginError && <p className="who-login-error">{bLoginError}</p>}
+            </form>
+            <button type="button" className="who-login-back" onClick={()=>{setShowBLogin(false); setBLoginError('');}}>← Back</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="who-wrap">
+        <div className="who-content">
+          <div className="who-logo-row">
+            <span className="mark">PH</span>
+            <h1>INTELLICARE</h1>
+          </div>
+          <p className="who-eyebrow">Who's using this?</p>
+          <div className="who-grid">
+            {options.map(o=>(
+              <button type="button" key={o.id} className="who-card" onClick={()=>chooseUser(o.id)}>
+                <span className="who-avatar">{o.label[0]}</span>
+                <span className="who-name">{o.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="who-sub">
+            Choose <strong>B</strong> — {options[0].desc}. Choose <strong>Others</strong> — {options[1].desc}.
+          </p>
+          {fbAuthAvailable && bAuthUser && (
+            <p className="who-signed-in">
+              Signed in to the cloud as <strong>{bAuthUser.email}</strong> · <button type="button" className="who-login-back inline" onClick={signOutB}>Sign out</button>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function renderHome(){
     return (
       <React.Fragment>
+        <div className="home-nearme">
+          <div className="home-nearme-head">
+            <span className="home-nearme-title">📍 Near Me</span>
+            {profileCoords ? (
+              <span className="home-nearme-sub">Distances shown on every card are calculated from <strong>{profile.location}</strong></span>
+            ) : profileGeocoding ? (
+              <span className="home-nearme-sub">Locating "{profile.location}"…</span>
+            ) : (
+              <span className="home-nearme-sub">
+                Add a location on your <button type="button" className="home-nearme-link" onClick={()=>push('profile','Profile')}>Profile</button> to see distances on every card.
+              </span>
+            )}
+          </div>
+          <RadiusFilter value={nearMeRadius} onChange={setNearMeRadius} />
+        </div>
         <div className="quick-jump">
           <select value={homeProv} onChange={e=>{setHomeProv(e.target.value); setHomeCity([]);}}>
             <option value="">All provinces</option>
@@ -2556,6 +3046,51 @@ function App(){
           <div>@July 2026 Intellicare Directory</div>
         </footer>
       </React.Fragment>
+    );
+  }
+
+  function renderProfile(){
+    const initial = (profile.name||'?').trim().charAt(0).toUpperCase() || '?';
+    return (
+      <div className="profile-page">
+        <div className="profile-avatar">{initial}</div>
+        <h2>Your Profile</h2>
+        <p className="profile-sub">This is shown whenever you open the app so you can check your details. Nothing here is sent anywhere — it stays on this device.</p>
+
+        <div className="profile-field">
+          <label htmlFor="profile-name">Name</label>
+          <input
+            id="profile-name"
+            type="text"
+            value={profile.name}
+            placeholder="Your name"
+            onChange={e=>setProfile(p=>({...p, name:e.target.value}))}
+          />
+        </div>
+
+        <div className="profile-field">
+          <label htmlFor="profile-location">Location</label>
+          <div className="profile-location-row">
+            <input
+              id="profile-location"
+              type="text"
+              value={profile.location}
+              placeholder="e.g. Quezon City, Metro Manila"
+              onChange={e=>setProfile(p=>({...p, location:e.target.value}))}
+            />
+            <button type="button" className="btn profile-locate-btn" onClick={locateProfile} disabled={profileLocating}
+              title="Use your current location">
+              {profileLocating ? '📍 Locating…' : '📍 Near me'}
+            </button>
+          </div>
+          {profileLocationError && <div className="profile-location-error">{profileLocationError}</div>}
+          <p className="profile-note">Tap "📍 Near me" to fill this in automatically — your browser will ask permission to use your location.</p>
+        </div>
+
+        <div className="profile-actions">
+          <button type="button" className="btn teal" onClick={goHome}>Continue to directory</button>
+        </div>
+      </div>
     );
   }
 
@@ -2657,8 +3192,6 @@ function App(){
               <button type="button" className="clear-btn" onClick={()=>{setListQuery(''); setShown(PAGE_SIZE);}} aria-label="Clear search">✕</button>
             )}
           </div>
-          <NearMeButton active={nearMeOn} locating={locating} error={locationError} usingLastKnown={usingLastKnown} onClick={requestNearMe} />
-          {nearMeOn && <RadiusFilter value={nearMeRadius} onChange={setNearMeRadius} />}
           <MultiSelect
             options={specOptionsForCats}
             selected={filterSpec}
@@ -2685,7 +3218,7 @@ function App(){
                     favorited={kind==='doctors' ? !!doctorFavorites[g.key] : kind==='dentists' ? !!dentistFavorites[g.key] : undefined}
                     onToggleFavorite={kind==='doctors' ? ()=>toggleDoctorFavorite(g.key) : kind==='dentists' ? ()=>toggleDentistFavorite(g.key) : undefined}
                     doctorKey={g.key}
-                    distanceFor={nearMeOn ? distanceFor : undefined}
+                    distanceFor={distanceFor}
                     collapsedFacilities={collapsedFacilities}
                     onToggleFacilityCollapse={toggleFacilityCollapse}
                   />
@@ -2783,8 +3316,6 @@ function App(){
               <button type="button" className="clear-btn" onClick={()=>{setListQuery(''); setShown(PAGE_SIZE);}} aria-label="Clear search">✕</button>
             )}
           </div>
-          <NearMeButton active={nearMeOn} locating={locating} error={locationError} usingLastKnown={usingLastKnown} onClick={requestNearMe} />
-          {nearMeOn && <RadiusFilter value={nearMeRadius} onChange={setNearMeRadius} />}
         </div>
         {grouped.length===0 ? (
           <div className="empty"><div className="big">No matching listings</div>Try clearing filters or adjusting your search.</div>
@@ -2801,7 +3332,7 @@ function App(){
                   doctorKey={g.key}
                   collapsedFacilities={collapsedFacilities}
                   onToggleFacilityCollapse={toggleFacilityCollapse}
-                  distanceFor={nearMeOn ? distanceFor : undefined}
+                  distanceFor={distanceFor}
                 />
               ))}
             </div>
@@ -2828,8 +3359,6 @@ function App(){
               <button type="button" className="clear-btn" onClick={()=>{setListQuery(''); setShown(PAGE_SIZE);}} aria-label="Clear search">✕</button>
             )}
           </div>
-          <NearMeButton active={nearMeOn} locating={locating} error={locationError} usingLastKnown={usingLastKnown} onClick={requestNearMe} />
-          {nearMeOn && <RadiusFilter value={nearMeRadius} onChange={setNearMeRadius} />}
           <select value={filterProv} onChange={e=>{setFilterProv(e.target.value); setFilterCity([]); setShown(PAGE_SIZE);}}>
             <option value="">All provinces</option>
             {provinceOptions.map(p=><option key={p} value={p}>{p}</option>)}
@@ -2857,7 +3386,7 @@ function App(){
                   onSaveContact={val=>saveFacilityContact(kind, f[5], val)}
                   bookmarked={kind==='hospitals' ? !!hospitalFavorites[f[5]] : !!clinicFavorites[f[5]]}
                   onToggleBookmark={kind==='hospitals' ? ()=>toggleHospitalFavorite(f[5]) : ()=>toggleClinicFavorite(f[5])}
-                  distance={nearMeOn ? distanceFor(f[1], f[2], f[3]) : undefined}
+                  distance={distanceFor(f[1], f[2], f[3])}
                 />
               ))}
             </div>
@@ -2883,8 +3412,6 @@ function App(){
               <button type="button" className="clear-btn" onClick={()=>{setListQuery(''); setShown(PAGE_SIZE);}} aria-label="Clear search">✕</button>
             )}
           </div>
-          <NearMeButton active={nearMeOn} locating={locating} error={locationError} usingLastKnown={usingLastKnown} onClick={requestNearMe} />
-          {nearMeOn && <RadiusFilter value={nearMeRadius} onChange={setNearMeRadius} />}
           <select value={filterProv} onChange={e=>{setFilterProv(e.target.value); setShown(PAGE_SIZE);}}>
             <option value="">All provinces</option>
             {provinceOptions.map(p=><option key={p} value={p}>{p}</option>)}
@@ -2915,7 +3442,7 @@ function App(){
                     setFilterSpec([]);
                     setShown(PAGE_SIZE);
                   }}
-                  distance={nearMeOn ? distanceFor(f[1], f[2], f[3]) : undefined}
+                  distance={distanceFor(f[1], f[2], f[3])}
                 />
               ))}
             </div>
@@ -2957,6 +3484,7 @@ function App(){
                   doctorKey={g.key}
                   collapsedFacilities={collapsedFacilities}
                   onToggleFacilityCollapse={toggleFacilityCollapse}
+                  distanceFor={distanceFor}
                 />
               ))}
             </div>
@@ -2989,6 +3517,7 @@ function App(){
                 doctorKey={g.key}
                 collapsedFacilities={collapsedFacilities}
                 onToggleFacilityCollapse={toggleFacilityCollapse}
+                distanceFor={distanceFor}
               />
             ))}
           </div>
@@ -3009,6 +3538,7 @@ function App(){
                 doctorKey={g.key}
                 collapsedFacilities={collapsedFacilities}
                 onToggleFacilityCollapse={toggleFacilityCollapse}
+                distanceFor={distanceFor}
               />
             ))}
           </div>
@@ -3029,6 +3559,7 @@ function App(){
                 onSaveContact={val=>saveFacilityContact('hospitals', f[5], val)}
                 bookmarked={true}
                 onToggleBookmark={()=>toggleHospitalFavorite(f[5])}
+                distance={distanceFor(f[1], f[2], f[3])}
               />
             ))}
           </div>
@@ -3049,6 +3580,7 @@ function App(){
                 onSaveContact={val=>saveFacilityContact('clinics', f[5], val)}
                 bookmarked={true}
                 onToggleBookmark={()=>toggleClinicFavorite(f[5])}
+                distance={distanceFor(f[1], f[2], f[3])}
               />
             ))}
           </div>
@@ -3079,8 +3611,21 @@ function App(){
     );
   }
 
+  // The gate screen replaces the whole app shell (no topbar/back-bar), same
+  // as Flag Atlas's full-screen "Who's playing?" — it's the first thing you
+  // see, not a panel bolted onto Home.
+  if(view.screen==='whoUsing'){
+    return (
+      <React.Fragment>
+        {renderWhoUsing()}
+        {toast && <div className="toast">{toast}</div>}
+      </React.Fragment>
+    );
+  }
+
   let body;
   if(view.screen==='home') body = renderHome();
+  else if(view.screen==='profile') body = renderProfile();
   else if(view.screen==='doctorCats') body = renderDoctorCats();
   else if(view.screen==='doctorSub') body = renderDoctorSub();
   else if(view.screen==='recordList') body = renderRecordList();
@@ -3094,10 +3639,23 @@ function App(){
     <React.Fragment>
       <div className="topbar">
         <div className="topbar-actions">
-          <button className="btn ghost" onClick={triggerImport} disabled={importing}>⭱ Import</button>
-          <button className="btn ghost" onClick={saveAllLocally} disabled={importing} title="Save favorites & contact numbers to this browser">💾 Save</button>
-          <button className="btn ghost" onClick={()=>setShowResetConfirm(true)} disabled={importing} title="Revert to originally provided file">↺ Reset</button>
-          <button className="btn ghost" onClick={exportJson} disabled={importing} title="Export favorites & contact numbers as .json">⭳ Export</button>
+          <button className="btn ghost" onClick={switchUser} disabled={importing} title="Switch between B and Others">🔀 Switch</button>
+          <button className="btn ghost icon-only" onClick={()=>push('profile','Profile')} disabled={importing} title="Profile" aria-label="Profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+          {appUser==='B' && (
+            <button className="btn ghost icon-only" onClick={triggerImport} disabled={importing} title="Import (.json)" aria-label="Import">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </button>
+          )}
+          <button className="btn ghost icon-only" onClick={saveAllLocally} disabled={importing} title={appUser==='B' ? "Save favorites & contact numbers to this browser and the cloud" : "Save favorites & contact numbers to this browser"} aria-label="Save">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+          {appUser==='B' && (
+            <button className="btn ghost icon-only" onClick={exportJson} disabled={importing} title="Export (.json)" aria-label="Export">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          )}
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFile} />
           <input ref={jsonFileInputRef} type="file" accept=".json,application/json" onChange={handleJsonFile} />
         </div>
@@ -3142,19 +3700,6 @@ function App(){
               <button className="btn" onClick={()=>setShowImportChoice(false)}>Cancel</button>
               <button className="btn teal" onClick={chooseImportJson}>.JSON</button>
               <button className="btn teal" onClick={chooseImportXlsx}>.XLSX</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResetConfirm && (
-        <div className="overlay" onClick={()=>setShowResetConfirm(false)}>
-          <div className="confirm-card" onClick={e=>e.stopPropagation()}>
-            <div className="confirm-title">Reset data?</div>
-            <p className="confirm-body">This will discard any imported spreadsheet and revert the directory back to the originally provided data. This cannot be undone.</p>
-            <div className="confirm-actions">
-              <button className="btn" onClick={()=>setShowResetConfirm(false)}>Cancel</button>
-              <button className="btn teal" onClick={confirmReset}>Reset</button>
             </div>
           </div>
         </div>
