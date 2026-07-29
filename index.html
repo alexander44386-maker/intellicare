@@ -11,6 +11,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700;8..60,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -537,9 +539,9 @@
   }
   .who-grid{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
   .who-card{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-    width:150px;height:150px;
-    background:var(--white);border:1px solid var(--line);border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    width:88px;height:88px;padding:0;
+    background:var(--white);border:1px solid var(--line);border-radius:50%;
     box-shadow:0 3px 10px rgba(18,42,59,.08);
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
   }
@@ -551,7 +553,6 @@
     background:var(--paper-dim);font-size:22px;font-weight:700;
     font-family:'Source Serif 4',serif;color:var(--teal-dark);
   }
-  .who-name{font-size:14.5px;font-weight:600;color:var(--ink);}
   .who-sub{font-size:15px;color:var(--ink-soft);max-width:340px;margin:18px auto 0;line-height:1.5;}
   .who-login-card{
     display:flex;flex-direction:column;gap:10px;max-width:300px;margin:0 auto;
@@ -727,10 +728,34 @@
   .profile-field label{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);margin-bottom:7px;font-family:'IBM Plex Mono',monospace;letter-spacing:.4px;text-transform:uppercase;}
   .profile-field input[type=text]{width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--line);background:var(--white);color:var(--ink);font-size:14.5px;font-family:inherit;}
   .profile-field input[type=text]:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal);}
-  .profile-location-row{display:flex;gap:8px;align-items:stretch;}
+  .profile-location-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
   .profile-location-row input{flex:1;min-width:0;}
-  .profile-locate-btn{white-space:nowrap;flex-shrink:0;}
+  .profile-locate-btn, .profile-pin-btn{white-space:nowrap;flex-shrink:0;}
   .profile-note{font-size:12px;color:var(--ink-soft);margin-top:7px;}
+
+  /* ---------- Pin-on-map picker ---------- */
+  .map-picker-card{
+    background:var(--white);border-radius:10px;text-align:left;
+    width:min(520px, 92vw);box-shadow:0 20px 50px rgba(0,0,0,.25);
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+  .map-picker-head{padding:16px 20px 4px;}
+  .map-picker-head .confirm-title{font-family:'Source Serif 4',serif;font-size:17px;font-weight:700;margin:0 0 4px;color:var(--ink);}
+  .map-picker-head p{font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.5;}
+  .map-picker-canvas{width:100%;height:320px;background:var(--paper-dim);position:relative;}
+  .map-picker-canvas .leaflet-container{width:100%;height:100%;}
+  .map-picker-coords{
+    padding:9px 20px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    color:var(--ink-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    background:var(--paper);
+  }
+  .map-picker-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;}
+  .map-picker-search{padding:0 20px 12px;}
+  .map-picker-search input{
+    width:100%;padding:8px 11px;border-radius:6px;border:1px solid var(--line);
+    background:var(--white);color:var(--ink);font-size:13px;font-family:inherit;
+  }
+  .map-picker-search input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,124,134,.15);}
   .profile-actions{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
   .profile-avatar{
     width:56px;height:56px;border-radius:50%;
@@ -1949,6 +1974,109 @@ function App(){
   const [profileLocating, setProfileLocating] = useState(false);
   const [profileLocationError, setProfileLocationError] = useState('');
 
+  // ---------- "Pin on map" picker ----------
+  // Lets someone correct a wrong GPS/geocode fix by dropping a marker
+  // themselves. Uses Leaflet (loaded via CDN in <head>) with OSM tiles, and
+  // reverse-geocodes the dropped pin the same way "Use my location" does.
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [pinCoords, setPinCoords] = useState(null); // {lat,lon} while the picker is open
+  const [pinSearchText, setPinSearchText] = useState('');
+  const [pinResolving, setPinResolving] = useState(false);
+  const mapPickerElRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const mapMarkerRef = useRef(null);
+
+  const openMapPicker = ()=>{
+    setProfileLocationError('');
+    setPinSearchText('');
+    setPinCoords(profileCoords || null);
+    setShowMapPicker(true);
+  };
+
+  useEffect(()=>{
+    if(!showMapPicker) return;
+    if(!window.L || !mapPickerElRef.current) return;
+
+    // Leaflet's default marker icon points at relative image paths that
+    // don't exist when it's loaded from a CDN — point them at the CDN copies
+    // once, the first time a map is ever created.
+    if(!window._leafletIconsFixed){
+      window.L.Icon.Default.mergeOptions({
+        iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+        iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+        shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      });
+      window._leafletIconsFixed = true;
+    }
+
+    const start = pinCoords || {lat:12.8797, lon:121.7740}; // Philippines centroid fallback
+    const map = window.L.map(mapPickerElRef.current, {attributionControl:false})
+      .setView([start.lat, start.lon], pinCoords ? 14 : 6);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,
+    }).addTo(map);
+
+    const marker = window.L.marker([start.lat, start.lon], {draggable:true}).addTo(map);
+    marker.on('dragend', ()=>{
+      const ll = marker.getLatLng();
+      setPinCoords({lat:ll.lat, lon:ll.lng});
+    });
+    map.on('click', e=>{
+      marker.setLatLng(e.latlng);
+      setPinCoords({lat:e.latlng.lat, lon:e.latlng.lng});
+    });
+
+    mapInstanceRef.current = map;
+    mapMarkerRef.current = marker;
+
+    // Leaflet needs a nudge to measure its container correctly once it's
+    // actually visible inside the just-opened modal.
+    setTimeout(()=> map.invalidateSize(), 60);
+
+    return ()=>{
+      map.remove();
+      mapInstanceRef.current = null;
+      mapMarkerRef.current = null;
+    };
+  }, [showMapPicker]);
+
+  const pinSearchGo = async ()=>{
+    const q = pinSearchText.trim();
+    if(!q) return;
+    setPinResolving(true);
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q='+encodeURIComponent(q));
+      const results = res.ok ? await res.json() : [];
+      const hit = results && results[0];
+      if(hit){
+        const lat = parseFloat(hit.lat), lon = parseFloat(hit.lon);
+        setPinCoords({lat, lon});
+        if(mapInstanceRef.current) mapInstanceRef.current.setView([lat, lon], 15);
+        if(mapMarkerRef.current) mapMarkerRef.current.setLatLng([lat, lon]);
+      }
+    }catch(e){ /* silently ignore — the person can still drop the pin by hand */ }
+    setPinResolving(false);
+  };
+
+  const confirmMapPicker = async ()=>{
+    if(!pinCoords) { setShowMapPicker(false); return; }
+    const {lat, lon} = pinCoords;
+    let label = lat.toFixed(4)+', '+lon.toFixed(4);
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&addressdetails=1&lat='+lat+'&lon='+lon);
+      const j = await res.json();
+      const a = (j && j.address) || {};
+      const place = a.city || a.town || a.municipality || a.village || a.suburb || a.county || '';
+      const province = a.state || a.region || '';
+      label = [place, province].filter(Boolean).join(', ') || j.display_name || label;
+    }catch(e){ /* keep the coordinate fallback */ }
+    profileCoordsForRef.current = label;
+    saveLastLocation({lat, lon});
+    setProfileCoords({lat, lon});
+    setProfile(p=>({...p, location: label}));
+    setShowMapPicker(false);
+  };
+
   useEffect(()=>{
     let cancelled=false;
     (async ()=>{
@@ -2930,14 +3058,14 @@ function App(){
           <p className="who-eyebrow">Who's using this?</p>
           <div className="who-grid">
             {options.map(o=>(
-              <button type="button" key={o.id} className="who-card" onClick={()=>chooseUser(o.id)}>
+              <button type="button" key={o.id} className="who-card" onClick={()=>chooseUser(o.id)}
+                title={o.label} aria-label={o.label}>
                 <span className="who-avatar">{o.label[0]}</span>
-                <span className="who-name">{o.label}</span>
               </button>
             ))}
           </div>
           <p className="who-sub">
-            Choose <strong>B</strong> — {options[0].desc}. Choose <strong>Others</strong> — {options[1].desc}.
+            <strong>B</strong> syncs everything to the cloud. <strong>Others</strong> 🙂 keeps it on this device only.
           </p>
           {fbAuthAvailable && bAuthUser && (
             <p className="who-signed-in">
@@ -3082,10 +3210,46 @@ function App(){
               title="Use your current location">
               {profileLocating ? '📍 Locating…' : '📍 Near me'}
             </button>
+            <button type="button" className="btn profile-pin-btn" onClick={openMapPicker}
+              title="Drop a pin on the map instead">
+              🗺️ Pin on map
+            </button>
           </div>
           {profileLocationError && <div className="profile-location-error">{profileLocationError}</div>}
-          <p className="profile-note">Tap "📍 Near me" to fill this in automatically — your browser will ask permission to use your location.</p>
+          <p className="profile-note">Tap "📍 Near me" to fill this in automatically, type an address above, or use "🗺️ Pin on map" if GPS gets it wrong.</p>
         </div>
+
+        {showMapPicker && (
+          <div className="overlay" onClick={()=>setShowMapPicker(false)}>
+            <div className="map-picker-card" onClick={e=>e.stopPropagation()}>
+              <div className="map-picker-head">
+                <div className="confirm-title">Pin your location</div>
+                <p>Search for a place, or click/drag the marker to the right spot.</p>
+              </div>
+              <div className="map-picker-search">
+                <input
+                  type="text"
+                  value={pinSearchText}
+                  placeholder="Search an address or barangay…"
+                  onChange={e=>setPinSearchText(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); pinSearchGo(); } }}
+                />
+              </div>
+              <div className="map-picker-canvas" ref={mapPickerElRef}></div>
+              <div className="map-picker-coords">
+                {pinResolving
+                  ? 'Searching…'
+                  : pinCoords
+                    ? ('📍 '+pinCoords.lat.toFixed(4)+', '+pinCoords.lon.toFixed(4))
+                    : 'Click the map to drop a pin'}
+              </div>
+              <div className="map-picker-actions">
+                <button type="button" className="btn" onClick={()=>setShowMapPicker(false)}>Cancel</button>
+                <button type="button" className="btn teal" onClick={confirmMapPicker} disabled={!pinCoords}>Use this location</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="profile-actions">
           <button type="button" className="btn teal" onClick={goHome}>Continue to directory</button>
@@ -3639,18 +3803,20 @@ function App(){
     <React.Fragment>
       <div className="topbar">
         <div className="topbar-actions">
-          <button className="btn ghost" onClick={switchUser} disabled={importing} title="Switch between B and Others">🔀 Switch</button>
+          <button className="btn ghost icon-only" onClick={switchUser} disabled={importing} title="Switch between B and Others" aria-label="Switch account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+          </button>
           <button className="btn ghost icon-only" onClick={()=>push('profile','Profile')} disabled={importing} title="Profile" aria-label="Profile">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+          <button className="btn ghost icon-only" onClick={saveAllLocally} disabled={importing} title={appUser==='B' ? "Save favorites & contact numbers to this browser and the cloud" : "Save favorites & contact numbers to this browser"} aria-label="Save">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
           {appUser==='B' && (
             <button className="btn ghost icon-only" onClick={triggerImport} disabled={importing} title="Import (.json)" aria-label="Import">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </button>
           )}
-          <button className="btn ghost icon-only" onClick={saveAllLocally} disabled={importing} title={appUser==='B' ? "Save favorites & contact numbers to this browser and the cloud" : "Save favorites & contact numbers to this browser"} aria-label="Save">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          </button>
           {appUser==='B' && (
             <button className="btn ghost icon-only" onClick={exportJson} disabled={importing} title="Export (.json)" aria-label="Export">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
